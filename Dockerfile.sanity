@@ -1,0 +1,21 @@
+FROM node:20-alpine AS builder
+WORKDIR /studio
+
+COPY onchain-academy/cms/sanity/package.json onchain-academy/cms/sanity/package-lock.json ./
+RUN npm ci
+
+COPY onchain-academy/cms/sanity/ ./
+
+ARG SANITY_STUDIO_PROJECT_ID
+ARG SANITY_STUDIO_DATASET=production
+ENV SANITY_STUDIO_PROJECT_ID=$SANITY_STUDIO_PROJECT_ID
+ENV SANITY_STUDIO_DATASET=$SANITY_STUDIO_DATASET
+
+RUN npm run build
+
+FROM nginx:1.27-alpine AS runtime
+COPY --from=builder /studio/dist /usr/share/nginx/html
+
+EXPOSE 80
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://127.0.0.1/ || exit 1

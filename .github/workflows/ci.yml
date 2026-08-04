@@ -53,16 +53,7 @@ jobs:
 
       - name: Install CMS dependencies
         working-directory: onchain-academy/cms/sanity
-        run: |
-          rm package-lock.json
-          npm install --package-lock-only
-          npm ci
-
-      - name: Export repaired CMS lockfile
-        uses: actions/upload-artifact@v4
-        with:
-          name: repaired-sanity-package-lock
-          path: onchain-academy/cms/sanity/package-lock.json
+        run: npm ci
 
       - name: Build CMS
         working-directory: onchain-academy/cms/sanity
@@ -82,3 +73,12 @@ jobs:
 
       - name: Build backend image
         run: docker build --file Dockerfile.backend --tag superteam-backend:${{ github.sha }} .
+
+      - name: Build CMS image
+        run: >-
+          docker build
+          --file Dockerfile.sanity
+          --build-arg SANITY_STUDIO_PROJECT_ID=ci-placeholder
+          --build-arg SANITY_STUDIO_DATASET=production
+          --tag superteam-sanity:${{ github.sha }}
+          .
