@@ -54,6 +54,7 @@ jobs:
       - name: Install CMS dependencies
         working-directory: onchain-academy/cms/sanity
         run: |
+          rm package-lock.json
           npm install --package-lock-only
           npm ci
 
