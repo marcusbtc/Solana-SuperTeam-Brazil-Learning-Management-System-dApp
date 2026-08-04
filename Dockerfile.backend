@@ -10,6 +10,7 @@ FROM node:20-alpine AS builder
 
 WORKDIR /workspace
 COPY --from=dependencies /workspace/node_modules ./node_modules
+COPY --from=dependencies /workspace/onchain-academy/backend/node_modules ./onchain-academy/backend/node_modules
 COPY . .
 RUN npm run db:generate && npm run build:backend
 
@@ -20,6 +21,7 @@ WORKDIR /workspace
 COPY --from=builder /workspace/package.json /workspace/package-lock.json ./
 COPY --from=builder /workspace/node_modules ./node_modules
 COPY --from=builder /workspace/onchain-academy/backend/package.json ./onchain-academy/backend/package.json
+COPY --from=builder /workspace/onchain-academy/backend/node_modules ./onchain-academy/backend/node_modules
 COPY --from=builder /workspace/onchain-academy/backend/dist ./onchain-academy/backend/dist
 COPY --from=builder /workspace/onchain-academy/backend/prisma ./onchain-academy/backend/prisma
 
