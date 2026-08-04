@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://academy:academy@localhost:5432/academy
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            onchain-academy/cms/sanity/package-lock.json
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Lint frontend
+        run: npm run lint:app
+
+      - name: Typecheck backend
+        run: npm run lint:backend
+
+      - name: Build frontend
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:4000/v1
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+        run: npm run build:app
+
+      - name: Build backend
+        run: npm run build:backend
+
+      - name: Install CMS dependencies
+        working-directory: onchain-academy/cms/sanity
+        run: npm ci
+
+      - name: Build CMS
+        working-directory: onchain-academy/cms/sanity
+        env:
+          SANITY_STUDIO_PROJECT_ID: ci-placeholder
+          SANITY_STUDIO_DATASET: production
+        run: npm run build
+
+      - name: Build frontend image
+        run: >-
+          docker build
+          --file Dockerfile.app
+          --build-arg NEXT_PUBLIC_API_BASE_URL=http://localhost:4000/v1
+          --build-arg NEXT_PUBLIC_SITE_URL=http://localhost:3000
+          --tag superteam-app:${{ github.sha }}
+          .
+
+      - name: Build backend image
+        run: docker build --file Dockerfile.backend --tag superteam-backend:${{ github.sha }} .

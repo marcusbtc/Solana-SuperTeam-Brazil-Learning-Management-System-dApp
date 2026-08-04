@@ -10,9 +10,18 @@ import { streakRoutes } from "./streak.js";
 import { achievementRoutes } from "./achievements.js";
 import { internalJobRoutes } from "./internal-jobs.js";
 import { userRoutes } from "./user.js";
+import { prisma } from "../lib/prisma.js";
 
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
-  app.get("/health", async () => ({ status: "ok" }));
+  app.get("/health", async (_request, reply) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      return { status: "ok", database: "ok" };
+    } catch {
+      reply.code(503);
+      return { status: "degraded", database: "unavailable" };
+    }
+  });
 
   await app.register(
     async (v1) => {
