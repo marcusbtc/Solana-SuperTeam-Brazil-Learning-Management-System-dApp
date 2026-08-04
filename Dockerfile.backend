@@ -1,0 +1,33 @@
+FROM node:20-alpine AS dependencies
+
+WORKDIR /workspace
+COPY package.json package-lock.json ./
+COPY onchain-academy/app/package.json ./onchain-academy/app/package.json
+COPY onchain-academy/backend/package.json ./onchain-academy/backend/package.json
+RUN npm ci
+
+FROM node:20-alpine AS builder
+
+WORKDIR /workspace
+COPY --from=dependencies /workspace/node_modules ./node_modules
+COPY --from=dependencies /workspace/onchain-academy/backend/node_modules ./onchain-academy/backend/node_modules
+COPY . .
+RUN npm run db:generate && npm run build:backend
+
+FROM node:20-alpine AS runtime
+
+ENV NODE_ENV=production
+WORKDIR /workspace
+COPY --from=builder /workspace/package.json /workspace/package-lock.json ./
+COPY --from=builder /workspace/node_modules ./node_modules
+COPY --from=builder /workspace/onchain-academy/backend/package.json ./onchain-academy/backend/package.json
+COPY --from=builder /workspace/onchain-academy/backend/node_modules ./onchain-academy/backend/node_modules
+COPY --from=builder /workspace/onchain-academy/backend/dist ./onchain-academy/backend/dist
+COPY --from=builder /workspace/onchain-academy/backend/prisma ./onchain-academy/backend/prisma
+
+USER node
+EXPOSE 4000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD ["wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:4000/health"]
+
+CMD ["sh", "-c", "npm --workspace onchain-academy/backend run prisma:deploy && npm --workspace onchain-academy/backend run start"]

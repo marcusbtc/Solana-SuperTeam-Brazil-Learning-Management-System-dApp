@@ -1,0 +1,11 @@
+.env*
+!**/.env.example
+.git
+.github
+**/.next
+**/dist
+**/node_modules
+**/.sanity
+**/*.tsbuildinfo
+target
+test-ledger
